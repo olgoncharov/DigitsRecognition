@@ -1,5 +1,20 @@
 import numpy as np
 from scipy.optimize import minimize as sc_minimize
+import time
+import functools
+
+
+def measure_time(func):
+    """Декортатор, реализующий вывод времени выполнения функции"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        func(*args, **kwargs)
+        finish_time = time.time()
+        print(f'Время выполнения {func.__name__}: {finish_time - start_time:.3f} секунд')
+
+    return wrapper
+
 
 class NeuralNetworkLayer():
     """
@@ -64,7 +79,7 @@ class NeuralNetwork():
         ---------
         *args
             В качестве аргументов передаются целые числа, обозначающие количество нейронов на каждом слое сети.
-            Количество переданных чисел равняется количеству слоев создаваемой нейронной сети.
+            Количество переданных аргументов равняется количеству слоев создаваемой нейронной сети.
 
         Примечание
         ----------
@@ -231,7 +246,8 @@ class NeuralNetwork():
 
         return J
 
-    def train(self, X, Y, lambda_, max_iter=150):
+    @measure_time
+    def train(self, X, Y, lambda_, init_weights=None, max_iter=150):
         """
         Обучает нейронную сеть.
 
@@ -244,11 +260,17 @@ class NeuralNetwork():
             Ожидаемый выходной сигнал.
         lambda_: number
             Параметр регуляризации.
+        init_weights: ndarray
+            Веса нейронной сети, используемые в качестве начального приближения для алгоритма оптимизации. Заданы в виде
+            одномерного массива. Если начальные веса не заданы, то они инициализируются случайными значениями.
         max_iter: integer
             Максимальное количество итераций, используемых для оптимизации функции затрат методом сопряженных градиентов.
         """
-        for layer in self[:-1]:
-            layer.initialize_weights(self[layer.index + 1].number_of_units)
+        if init_weights is None:
+            for layer in self[:-1]:
+                layer.initialize_weights(self[layer.index + 1].number_of_units)
+        else:
+            self.set_weights(init_weights)
 
         unroll_theta = unroll_arrays(*[layer.theta for layer in self.layers[0:-1]])
 
