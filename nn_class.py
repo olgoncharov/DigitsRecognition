@@ -136,7 +136,10 @@ class NeuralNetwork():
         """
         self[0].a_term = np.transpose(X)
         for layer in self[1:]:
-            layer.z_term = np.dot(self[layer.index-1].theta, add_ones(self[layer.index-1].a_term, 0))
+            layer.z_term = np.dot(
+                self[layer.index-1].theta,
+                np.vstack((np.ones((self[layer.index-1].a_term.shape[1])), self[layer.index-1].a_term))
+            )
             layer.a_term = sigmoid(layer.z_term)
 
     def backpropagation(self, X, Y):
@@ -165,7 +168,7 @@ class NeuralNetwork():
             self[-1].delta = (a_i - y_i).reshape((num_labels, 1))
 
             for layer in self[-2: :-1]:
-                a_l = add_ones(layer.a_term[:, i].reshape((1, layer.number_of_units)), 1)
+                a_l = np.hstack((np.array([[1]]), layer.a_term[:, i].reshape((1, layer.number_of_units))))
                 layer.derivate += np.dot(self[layer.index + 1].delta, a_l)
                 if layer.index != 0:
                     z_l = layer.z_term[:, i]
@@ -309,27 +312,6 @@ class NeuralNetworkIterator():
             return self.collection[self.cursor]
         else:
             raise StopIteration
-
-def add_ones(arr, ax):
-    """
-    Добавляет строку или столбец с единицами в матрицу.
-
-    Параметры
-    ---------
-    arr: array like
-        Исходный массив, к которому необходимо присоединить строку / столбец с единицами.
-    ax: int {0, 1}
-        Ось, вдоль которой присоединяются единицы. Если 0 - добавляется строка сверху, если 1 - столбец слева.
-
-    Возвращаемые значения
-    ---------------------
-    d: array
-        Результат конкатенации единичного вектора и исходной матрицы
-    """
-    if ax == 0:
-        return np.concatenate((np.ones((1, arr.shape[-1])), arr), axis=0)
-    else:
-        return np.concatenate((np.ones((arr.shape[0], 1)), arr), axis=1)
 
 
 def unroll_arrays(*args):
