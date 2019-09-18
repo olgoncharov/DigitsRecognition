@@ -24,6 +24,8 @@ class NeuralNetworkLayer():
     --------
     number_of_units: int
         Количество нейронов.
+    network: NeuralNetwork
+        Нейронная сеть, которой принадлежит слой.
     index: int
         Номер слоя по порядку в структуре нейронной сети.
     theta: ndarray
@@ -38,7 +40,7 @@ class NeuralNetworkLayer():
         Значения частных производных, рассчитанных по методу обратного распространения ошибки (backpropagation)
     """
 
-    def __init__(self, number_of_units, index):
+    def __init__(self, network, number_of_units, index):
         """
         Параметры
         ---------
@@ -47,6 +49,7 @@ class NeuralNetworkLayer():
         index: int
             Номер слоя по порядку в структуре нейронной сети.
         """
+        self.network = network
         self.number_of_units = number_of_units
         self.index = index
 
@@ -56,6 +59,16 @@ class NeuralNetworkLayer():
         self.z_term = None
         self.delta = None
         self.derivate = None
+
+    def __add__(self, other):
+        assert isinstance(other, int)
+        return self.network[self.index + other]
+
+    def __sub__(self, other):
+        assert isinstance(other, int)
+        assert other <= self.index
+        return self.network[self.index - other]
+
 
     def initialize_weights(self, number_of_outputs):
         """Инициализирует матрицу весов случайными числами. Выполняется перед обучением."""
@@ -96,7 +109,7 @@ class NeuralNetwork():
             len(args) > 2 and all(isinstance(item, int) for item in args),\
             'Переданы неверные параметры для инициализации нейронной сети'
 
-        self.layers = [NeuralNetworkLayer(s, ind) for ind, s in enumerate(args)]
+        self.layers = [NeuralNetworkLayer(self, s, ind) for ind, s in enumerate(args)]
 
     def __iter__(self):
         return NeuralNetworkIterator(self.layers)
@@ -120,7 +133,7 @@ class NeuralNetwork():
         for layer in self[:-1]:
             # Количество строк матрицы весов = количество нейронов следующего слоя
             # количество столбцов = количество нейронов текущего слоя + 1 (добавляем bias unit)
-            shape = (self[layer.index + 1].number_of_units, layer.number_of_units + 1)
+            shape = ((layer + 1).number_of_units, layer.number_of_units + 1)
             layer.theta = unroll_theta[cursor: cursor + shape[0] * shape[1]].reshape(shape, order='F')
             cursor += shape[0] * shape[1]
 
@@ -137,8 +150,8 @@ class NeuralNetwork():
         self[0].a_term = np.transpose(X)
         for layer in self[1:]:
             layer.z_term = np.dot(
-                self[layer.index-1].theta,
-                np.vstack((np.ones((self[layer.index-1].a_term.shape[1])), self[layer.index-1].a_term))
+                (layer - 1).theta,
+                np.vstack((np.ones(((layer - 1).a_term.shape[1])), (layer - 1).a_term))
             )
             layer.a_term = sigmoid(layer.z_term)
 
@@ -169,10 +182,10 @@ class NeuralNetwork():
 
             for layer in self[-2: :-1]:
                 a_l = np.hstack((np.array([[1]]), layer.a_term[:, i].reshape((1, layer.number_of_units))))
-                layer.derivate += np.dot(self[layer.index + 1].delta, a_l)
+                layer.derivate += np.dot((layer + 1).delta, a_l)
                 if layer.index != 0:
                     z_l = layer.z_term[:, i]
-                    layer.delta = np.dot(np.transpose(layer.theta), self[layer.index + 1].delta)[1:] * sigmoid_gradient(z_l).reshape(z_l.size, 1)
+                    layer.delta = np.dot(np.transpose(layer.theta), (layer + 1).delta)[1:] * sigmoid_gradient(z_l).reshape(z_l.size, 1)
 
         for layer in self[0:-1]:
             layer.derivate /= m
@@ -271,7 +284,7 @@ class NeuralNetwork():
         """
         if init_weights is None:
             for layer in self[:-1]:
-                layer.initialize_weights(self[layer.index + 1].number_of_units)
+                layer.initialize_weights((layer + 1).number_of_units)
         else:
             self.set_weights(init_weights)
 
