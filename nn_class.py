@@ -167,28 +167,15 @@ class NeuralNetwork():
         Y: ndarray
             Ожидаемый выходной сигнал.
         """
-        m = X.shape[0]
-        num_labels = self[-1].number_of_units
+        numbers = np.arange(1, 11)
+        Y_binary = np.transpose((Y == numbers)).astype('int')
 
-        for layer in self[:-1]:
-            layer.derivate = np.zeros(layer.theta.shape)
-
-        for i in range(m):
-            a_i = self[-1].a_term[:, i]
-            y_i = np.zeros(num_labels, dtype='int')
-            y_i[Y[i][0] - 1] = 1
-
-            self[-1].delta = (a_i - y_i).reshape((num_labels, 1))
-
-            for layer in self[-2: :-1]:
-                a_l = np.hstack((np.array([[1]]), layer.a_term[:, i].reshape((1, layer.number_of_units))))
-                layer.derivate += np.dot((layer + 1).delta, a_l)
-                if layer.index != 0:
-                    z_l = layer.z_term[:, i]
-                    layer.delta = np.dot(np.transpose(layer.theta), (layer + 1).delta)[1:] * sigmoid_gradient(z_l).reshape(z_l.size, 1)
-
-        for layer in self[0:-1]:
-            layer.derivate /= m
+        self[-1].delta = self[-1].a_term - Y_binary
+        for layer in self[-2: :-1]:
+            a_l = np.vstack((np.ones((1, layer.a_term.shape[1])), layer.a_term))
+            layer.derivate = np.dot((layer + 1).delta, np.transpose(a_l)) / X.shape[0]
+            if layer.index != 0:
+                layer.delta = np.dot(np.transpose(layer.theta), (layer + 1).delta)[1:] * sigmoid_gradient(layer.z_term)
 
     def gradient(self, X, Y, unroll_theta):
         """

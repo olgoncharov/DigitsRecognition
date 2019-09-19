@@ -18,8 +18,8 @@ Y_test = data['y'][random_indexes[:m_test], :]
 X_training = data['X'][random_indexes[m_test:], :]
 Y_training = data['y'][random_indexes[m_test:], :]
 
-nn = NeuralNetwork(400, 50, 10)
-nn.train(X_training, Y_training, 1, max_iter=250)
+nn = NeuralNetwork(400, 25, 10)
+nn.train(X_training, Y_training, 1, max_iter=500)
 
 pred_training = nn.predict(X_training)
 accuracy_training = np.mean(np.array(pred_training == Y_training.flatten(), dtype='int')) * 100
